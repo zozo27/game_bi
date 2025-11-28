@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CCU Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<h2>CCU 1분 집계 대시보드</h2>
+
+<canvas id="chart" width="1000" height="400"></canvas>
+
+<script>
+let chart = null;
+
+// 차트 생성 함수
+function createChart(data) {
+    const ctx = document.getElementById('chart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.minute,
+            datasets: [
+                {
+                    label: "CCU AVG",
+                    borderColor: "blue",
+                    data: data.ccu_avg
+                },
+                {
+                    label: "CCU MAX",
+                    borderColor: "red",
+                    data: data.ccu_max
+                },
+                {
+                    label: "CCU MIN",
+                    borderColor: "green",
+                    data: data.ccu_min
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            animation: false,
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
+// 데이터 갱신 함수
+function updateChart() {
+    fetch("/api/ccu")
+        .then(response => response.json())
+        .then(data => {
+            if (!chart) {
+                createChart(data);   // 최초 한 번만 생성
+            } else {
+                // 라벨 및 데이터 갱신
+                chart.data.labels = data.minute;
+                chart.data.datasets[0].data = data.ccu_avg;
+                chart.data.datasets[1].data = data.ccu_max;
+                chart.data.datasets[2].data = data.ccu_min;
+
+                chart.update();
+            }
+        });
+}
+
+// 최초 로딩
+updateChart();
+
+// 5초마다 자동 갱신
+setInterval(updateChart, 5000);
+
+</script>
+
+</body>
+</html>

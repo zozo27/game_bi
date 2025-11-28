@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Real-time CCU Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: 'Inter', sans-serif; background: #f5f6fa; color:#333; margin:0;}
+header { background:#2d3436; color:white; padding:18px 30px; font-size:24px;}
+.container { max-width:1100px; margin:30px auto; padding:0 20px;}
+.card { background:white; border-radius:12px; padding:25px; box-shadow:0 4px 12px rgba(0,0,0,0.05);}
+.chart-title { font-size:20px; font-weight:600; margin-bottom:15px; color:#2d3436;}
+#log-box { height:200px; overflow-y:auto; background:#1e1e1e; color:#00ff00; font-family:monospace; padding:10px; border-radius:8px;}
+
+/* 버튼 공통 스타일 */
+.btn {
+    display:inline-block; padding:12px 20px; margin-right:10px;
+    color:white; font-size:16px; border:none; border-radius:8px; cursor:pointer;
+}
+.btn:disabled {
+    background:#bdc3c7;
+    cursor:not-allowed;
+}
+
+/* 시작 버튼 */
+.btn-start { background:#0984e3; }
+.btn-start:hover:not(:disabled) { background:#0a6fc2; }
+
+/* 중지 버튼 */
+.btn-stop { background:#d63031; }
+.btn-stop:hover:not(:disabled) { background:#b11f22; }
+
+/* 상태 표시 */
+#status-label {
+    font-size:18px;
+    margin-bottom:15px;
+    font-weight:600;
+    color:#2d3436;
+}
+
+#dashboard-area { display:none; }
+</style>
+</head>
+<body>
+
+<header>아이온2 동시접속자</header>
+
+<div class="container">
+
+    <!-- 상태 표시 -->
+    <div id="status-label">현재 상태: 대시보드 정지됨</div>
+
+    <!-- 버튼 -->
+    <button id="startBtn" class="btn btn-start">대시보드 시작</button>
+    <button id="stopBtn" class="btn btn-stop" disabled>중지</button>
+
+    <!-- 대시보드 -->
+    <div id="dashboard-area">
+
+        <div class="card">
+            <div class="chart-title">실시간 동시접속</div>
+            <canvas id="chart" height="120"></canvas>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <div class="chart-title">실시간 로그 (동시접속 변동 기록)</div>
+            <div id="log-box"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let chart = null;
+let intervalChart = null;
+let startTime = null;
+
+// 상태 표시 함수
+function setStatus(text){
+    document.getElementById("status-label").innerText = "현재 상태: " + text;
+}
+
+// -----------------------------------------
+// 차트 생성
+// -----------------------------------------
+function createChart(data){
+    const ctx = document.getElementById("chart").getContext("2d");
+    chart = new Chart(ctx,{
+        type:'line',
+        data:{
+            labels:data.time,
+            datasets:[{
+                label:"동시접속",
+                data:data.ccu,
+                borderColor:"#0984e3",
+                borderWidth:2,
+                tension:0.25,
+                fill:false,
+                pointRadius:2
+            }]
+        },
+        options:{
+            responsive:true,
+            animation:false,
+            scales:{
+                x:{ grid:{ display:false }},
+                y:{ beginAtZero:false }
+            }
+        }
+    });
+}
+
+// -----------------------------------------
+// CCU 기반 차트 + 로그 갱신
+// -----------------------------------------
+function updateChart(){
+    fetch("/api/ccu")
+    .then(r=>r.json())
+    .then(raw=>{
+
+        const validIdx = raw.time
+            .map(t => new Date(t))
+            .reduce((list, dt, i)=>{
+                if (dt >= startTime) list.push(i);
+                return list;
+            }, []);
+
+        const data = {
+            time: validIdx.map(i => raw.time[i]),
+            ccu : validIdx.map(i => raw.ccu[i])
+        };
+
+        if(!chart){
+            createChart(data);
+        } else {
+            chart.data.labels = data.time;
+            chart.data.datasets[0].data = data.ccu;
+            chart.update();
+        }
+
+        updateLogs(data);
+    });
+}
+
+// -----------------------------------------
+// CCU 데이터를 로그 텍스트로 출력
+// -----------------------------------------
+function updateLogs(data){
+    const box = document.getElementById("log-box");
+    const logs = [];
+
+    for(let i=0; i < data.time.length; i++){
+        logs.push(`${data.time[i]} | CCU: ${data.ccu[i]}`);
+    }
+
+    box.innerHTML = logs.slice(-200).join("<br>");
+    box.scrollTop = box.scrollHeight;
+}
+
+// -----------------------------------------
+// 대시보드 시작
+// -----------------------------------------
+document.getElementById("startBtn").addEventListener("click", function(){
+
+    startTime = new Date();
+
+    // 상태 표시
+    setStatus("실시간 표시 중");
+
+    // 버튼 UI 변경
+    document.getElementById("startBtn").disabled = true;
+    document.getElementById("stopBtn").disabled = false;
+
+    document.getElementById("dashboard-area").style.display = "block";
+
+    updateChart();
+
+    intervalChart = setInterval(updateChart, 5000);
+});
+
+// -----------------------------------------
+// 중지
+// -----------------------------------------
+document.getElementById("stopBtn").addEventListener("click", function(){
+
+    clearInterval(intervalChart);
+    intervalChart = null;
+
+    // 상태 표시
+    setStatus("대시보드 정지됨");
+
+    // 버튼 UI 원복
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
+});
+</script>
+
+</body>
+</html>

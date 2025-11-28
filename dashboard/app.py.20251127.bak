@@ -1,0 +1,46 @@
+from flask import Flask, render_template, jsonify
+import pandas as pd
+import os
+import glob
+
+app = Flask(__name__)
+
+DATA_DIR = "dashboard/data"
+
+def load_all_minute_files():
+    files = glob.glob(os.path.join(DATA_DIR, "ccu_snapshot_*_minute.csv"))
+    if not files:
+        return None
+
+    all_dfs = []
+    for file in sorted(files):
+        try:
+            df = pd.read_csv(file)
+            all_dfs.append(df)
+        except Exception as e:
+            print(f"파일 읽기 실패: {file}, {e}")
+
+    if not all_dfs:
+        return None
+
+    return pd.concat(all_dfs, ignore_index=True)
+
+@app.route("/")
+def index():
+    return render_template("dashboard.html")
+
+@app.route("/api/ccu")
+def api_ccu():
+    df = load_all_minute_files()
+    if df is None:
+        return jsonify({"error": "no data"}), 404
+
+    return jsonify({
+        "minute": df["minute"].tolist(),
+        "ccu_avg": df["ccu_avg"].tolist(),
+        "ccu_max": df["ccu_max"].tolist(),
+        "ccu_min": df["ccu_min"].tolist(),
+    })
+
+if __name__ == "__main__":
+    app.run(debug=True)
