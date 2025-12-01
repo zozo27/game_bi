@@ -16,7 +16,7 @@ def now_kst():
 # ------------------------------
 def get_today_csv_path():
     date = now_kst().strftime("%Y%m%d")
-    return f"dashboard/data/ccu_snapshot_{date}.csv"
+    return f"/home/ubuntu/game_bi/dashboard/data/ccu_snapshot_{date}.csv"
 
 # ------------------------------
 # CSV 읽어서 CCU 반환
