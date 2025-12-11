@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CCU Snapshot Search</title>
+</head>
+<body>
+
+<h2>CCU Snapshot 검색</h2>
+
+<form method="post">
+    <label>Game ID:</label>
+    <input type="number" name="game_id"><br><br>
+
+    <label>Server ID:</label>
+    <input type="number" name="server_id"><br><br>
+
+    <label>Region:</label>
+    <input type="text" name="region"><br><br>
+
+    <label>Start Time (YYYY-MM-DD HH:MM:SS):</label>
+    <input type="text" name="start_time"><br><br>
+
+    <label>End Time (YYYY-MM-DD HH:MM:SS):</label>
+    <input type="text" name="end_time"><br><br>
+
+    <label>Min CCU:</label>
+    <input type="number" name="min_ccu"><br><br>
+
+    <label>Max CCU:</label>
+    <input type="number" name="max_ccu"><br><br>
+
+    <button type="submit">검색</button>
+</form>
+
+<hr>
+
+{% if rows is not none %}
+<h2>검색 결과</h2>
+
+{% if rows %}
+<table border="1" cellpadding="8">
+    <tr>
+        <th>snapshot_time</th>
+        <th>game_id</th>
+        <th>server_id</th>
+        <th>region</th>
+        <th>ccu</th>
+    </tr>
+
+    {% for row in rows %}
+    <tr>
+        <td>{{ row.snapshot_time }}</td>
+        <td>{{ row.game_id }}</td>
+        <td>{{ row.server_id }}</td>
+        <td>{{ row.region }}</td>
+        <td>{{ row.ccu }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>검색 결과가 없습니다.</p>
+{% endif %}
+{% endif %}
+
+</body>
+</html>
